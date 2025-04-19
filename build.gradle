@@ -1,0 +1,239 @@
+// ModTemplatez: An Architectury Loom based template workspace for Minecraft Forge mod development.
+//
+// ideally you don't need to touch this gradle script, instead:
+//
+// see ./gradle/scripts/dependencies.gradle for dependency management
+//
+// see ./gradle/scripts/publishing.gradle for publishing
+//
+// see ./gradle/scripts/extra.gradle for adding custom action after publishing
+//
+// see ./gradle.properties for almost everything about mod metadata, mod compiling, Minecraft sources, etc.
+//
+//
+//
+//
+//
+
+import org.jetbrains.changelog.Changelog
+
+plugins {
+    id('com.github.johnrengelman.shadow').version('8.1.1')
+    id('dev.architectury.loom').version('1.10-SNAPSHOT')
+    id('maven-publish')
+    id('idea')
+    id('com.matthewprenger.cursegradle').version('1.4.0').apply(false) //only used for CF publishing
+    id('com.modrinth.minotaur').version('2.+').apply(false)            //only used for Modrinth publishing
+    id('org.jetbrains.changelog').version('2.2.0')
+    id('xyz.wagyourtail.jvmdowngrader').version("${jvmdowngrader_version}").apply(false)
+}
+
+apply from: 'gradle/scripts/helpers.gradle'
+apply from: 'gradle/scripts/custom_tasks.gradle'
+
+def props = project.properties
+def sysProps = System.getProperties()
+
+if (project.hasProperty("run_number")) {
+    println("On GitHub runs #${props.run_number}")
+}
+println("Gradle running on Java: ${ -> sysProps['java.version']} | JVM: ${ -> sysProps['java.vm.version']} | Vendor: ${ -> sysProps['java.vendor']} | Architecture: ${ -> sysProps['os.arch']}")
+
+def javaTarget = JavaVersion.toVersion(propertyString("target_java_version"))
+println("Target Java version is set to: ${javaTarget.majorVersion}")
+
+if (propertyBool('use_jvmdowngrader')) {
+    apply plugin: 'xyz.wagyourtail.jvmdowngrader'
+    jvmdg.downgradeTo = javaTarget
+}
+
+base {
+    archivesName = "${propertyString('archives_base_name')}-${propertyString('minecraft_version')}"
+}
+
+version = propertyString('mod_version')
+group = propertyString('maven_group')
+
+java {
+    if (!propertyBool('use_jvmdowngrader')) {
+        sourceCompatibility = targetCompatibility = javaTarget
+    }
+
+    // Loom will automatically attach sourcesJar to a RemapSourcesJar task and to the "build" task
+    // if it is present.
+    if (propertyBool('generate_sources_jar')) {
+        withSourcesJar()
+    }
+    if (propertyBool('generate_javadocs_jar')) {
+        withJavadocJar()
+    }
+}
+
+loom {
+    // use this if you are using the official mojang mappings
+    // and want loom to stop warning you about their license
+    silentMojangMappingsLicense()
+
+
+    if (propertyBool('use_access_widener')) {
+        def f = file("src/main/resources/${propertyString('access_widener_name')}.accesswidener")
+        if (!f.exists()) {
+            logger.warn("Configured AccessWidener not found, force generating")
+            fnGenerateAccessWidenerBase()
+        }
+        accessWidenerPath = f
+    }
+
+    // since loom 0.10, you are **required** to use the
+    // "forge" block to configure forge-specific features,
+    // such as the mixinConfigs array or datagen
+    forge {
+        // specify the mixin configs used in this mod
+        // this will be added to the jar manifest as well!
+        if (propertyBool('use_mixin')) {
+            it.mixinConfigs.set(propertyStringList('mixin_configs').collect {"${it}.json"})
+        }
+
+        if (propertyBool('use_access_widener')) {
+            convertAccessWideners = true
+        }
+    }
+}
+
+configurations {
+    shade
+    implementation.extendsFrom(shade)
+}
+
+repositories {
+    maven {
+        name = 'ParchmentMC'
+        url = 'https://maven.parchmentmc.org'
+    }
+}
+
+dependencies {
+    def mc_ver = propertyString("minecraft_version")
+    def forge_ver = propertyString("forge_version")
+
+    // to change the versions see the gradle.properties file
+    minecraft("com.mojang:minecraft:${mc_ver}")
+
+    def mappingType = propertyString("mapping_type")
+    if (mappingType == "official") {
+        mappings(loom.officialMojangMappings())
+    } else if (mappingType == 'parchment') {
+        mappings(loom.layered {
+            officialMojangMappings()
+            parchment("org.parchmentmc.data:parchment-${parchment_version}")
+        })
+    } else if (mappingType == 'yarn') {
+        mappings("net.fabricmc:yarn:${yarn_version}:v2")
+    } else if (mappingType == 'custom') {
+        mappings(propertyString('custom_mapping'))
+    } else {
+        throw new IllegalArgumentException("mapping type '${mappingType}' not one of: official, parchment, yarn, custom")
+    }
+
+    forge("net.minecraftforge:forge:${mc_ver}-${forge_ver}")
+
+    if (propertyBool('use_lombok')) {
+        def vers = propertyString("lombok_version")
+        compileOnly("org.projectlombok:lombok:${vers}")
+        annotationProcessor("org.projectlombok:lombok:${vers}")
+        testCompileOnly("org.projectlombok:lombok:${vers}")
+        testAnnotationProcessor("org.projectlombok:lombok:${vers}")
+    }
+}
+
+apply from: 'gradle/scripts/dependencies.gradle'
+
+processResources {
+    if (!propertyBool("use_access_widener")) {
+        exclude("${propertyString('access_widener_name')}.accesswidener")
+    }
+
+    if (!propertyBool('use_mixin')) {
+        exclude(propertyStringList('mixin_configs').collect({"${it}.json"}))
+    }
+
+    def filters = ['META-INF/mods.toml', 'pack.mcmeta']
+
+    filesMatching(filters) {
+        it.expand(
+            "version": propertyString('mod_version'),
+            "forge_version": propertyString('forge_version'),
+            "loader_version_range": propertyString('loader_version_range'),
+            "license": propertyString('license'),
+            "mod_id": propertyString('mod_id'),
+            "mod_display_name": propertyString('mod_display_name'),
+            "mod_author": propertyString('mod_author'),
+            "minecraft_version": propertyString('minecraft_version'),
+            "resource_pack_format": propertyString('resource_pack_format')
+        )
+    }
+}
+
+tasks.withType(JavaCompile) {
+    // ensure that the encoding is set to UTF-8, no matter what the system default is
+    // this fixes some edge cases with special characters not displaying correctly
+    // see http://yodaconditions.net/blog/fix-for-java-file-encoding-problems-with-gradle.html
+    // If Javadoc is generated, this must be specified in that task too.
+    options.encoding = "UTF-8"
+
+    // very few developers will provide source jar when publishing mods, we add param names in production jar
+    // to make life easier for those whose mod depend on this mod
+    options.compilerArgs << '-parameters'
+
+//    options.release = javaTarget
+}
+
+jar {
+    // add some additional metadata to the jar manifest
+    manifest {
+        attributes([
+            "Specification-Title"     : mod_id,
+            "Specification-Vendor"    : mod_author,
+            "Specification-Version"   : "1",
+            "Implementation-Title"    : mod_display_name,
+            "Implementation-Version"  : version,
+            "Implementation-Vendor"   : mod_author,
+            "Implementation-Timestamp": new Date().format("yyyy-MM-dd'T'HH:mm:ssZ")
+        ])
+    }
+}
+
+remapJar {
+    if (propertyBool('use_jvmdowngrader')) {
+        setInput(downgradeJar.archiveFile)
+    } else {
+        setInput(shadowJar.archiveFile)
+    }
+    dependsOn(shadowJar)
+}
+
+if (propertyBool('use_jvmdowngrader')) {
+    assemble.dependsOn(downgradeJar)
+} else {
+    assemble.dependsOn(shadowJar)
+}
+
+String parserChangelog() {
+    if (!file('CHANGELOG.md').exists()) {
+        throw new GradleException('publish_with_changelog is true, but CHANGELOG.md does not exist in the workspace!')
+    }
+    String parsedChangelog = changelog.renderItem(
+        changelog.get(propertyString('mod_version')).withHeader(false).withEmptySections(false),
+        Changelog.OutputType.MARKDOWN
+    )
+    if (parsedChangelog.isEmpty()) {
+        throw new GradleException('publish_with_changelog is true, but the changelog for the latest version is empty!')
+    }
+    return parsedChangelog
+}
+
+processResources.dependsOn(generateMixinJson, generateAccessWidenerBase)
+
+apply from: 'gradle/scripts/publishing.gradle'
+
+apply from: 'gradle/scripts/extra.gradle'

@@ -1,0 +1,92 @@
+apply from: 'gradle/scripts/helpers.gradle'
+
+setDefaultProperty('publish_to_maven', true, false)
+setDefaultProperty('publish_to_curseforge', true, false)
+setDefaultProperty('publish_to_modrinth', true, false)
+
+if (propertyBool('publish_to_maven')) {
+    assertProperty('maven_name')
+    assertProperty('maven_url')
+    publishing {
+        // See https://docs.gradle.org/current/userguide/publishing_maven.html for information on how to set up publishing.
+        repositories {
+            maven {
+                name(propertyString('maven_name').replaceAll("\\s", ""))
+                url(propertyString('maven_url'))
+                credentials(PasswordCredentials)
+            }
+            // Add repositories to publish to here.
+            // Notice: This block does NOT have the same function as the block in the top level.
+            // The repositories here will be used for publishing your artifact, not for
+            // retrieving dependencies.
+        }
+        publications {
+            mavenJava(MavenPublication) {
+                from components.java // Publish with standard artifacts
+                setGroupId(propertyString('maven_group'))// Publish with root package as maven group
+                setArtifactId(propertyString('mod_id')) // Publish artifacts with mod id as the artifact id
+
+                // Custom artifact:
+                // If you want to publish a different artifact to the one outputted when building normally
+                // Create a different gradle task (Jar task), in extra.gradle
+                // Remove the 'from components.java' line above
+                // Add this line (change the task name):
+                // artifacts task_name
+            }
+        }
+    }
+}
+
+// Documentation here: https://github.com/matthewprenger/CurseGradle/wiki/
+if (propertyBool('publish_to_curseforge')) {
+    apply plugin: 'com.matthewprenger.cursegradle'
+    assertProperty('curseforge_project_id')
+    assertProperty('release_type')
+    setDefaultProperty('curseforge_debug', false, false)
+    curseforge {
+        apiKey = System.getenv('CURSEFORGE_TOKEN') == null ? "" : System.getenv('CURSEFORGE_TOKEN')
+        // noinspection GroovyAssignabilityCheck
+        project {
+            id = propertyString('curseforge_project_id')
+            addGameVersion "Java ${target_java_version}"
+            addGameVersion 'Forge'
+            addGameVersion propertyString('minecraft_version')
+            releaseType = propertyString('release_type')
+            if (!propertyBool('publish_with_changelog')) {
+                changelog = parserChangelog()
+                changelogType = 'markdown'
+            }
+            mainArtifact tasks.remapJar, {
+                displayName = "${propertyString('mod_display_name')} ${propertyString('mod_version')}"
+            }
+            options {
+                debug = propertyBool('curseforge_debug')
+            }
+        }
+    }
+}
+
+// Documentation here: https://github.com/modrinth/minotaur
+if (propertyBool('publish_to_modrinth')) {
+    apply plugin: 'com.modrinth.minotaur'
+    assertProperty('modrinth_project_id')
+    assertProperty('release_type')
+    setDefaultProperty('modrinth_debug', false, false)
+    modrinth {
+        token = System.getenv('MODRINTH_TOKEN') ? "" : System.getenv('MODRINTH_TOKEN')
+        projectId = propertyString('modrinth_project_id')
+        versionNumber = propertyString('mod_version')
+        versionType = propertyString('release_type')
+        uploadFile = tasks.remapJar
+        gameVersions = [propertyString('minecraft_version')]
+        loaders = ['forge']
+        debugMode = propertyBool('modrinth_debug')
+        if (!propertyBool('publish_with_changelog')) {
+            changelog = parserChangelog()
+        }
+        if (propertyBool('modrinth_sync_readme')) {
+            syncBodyFrom = file('README.md').text
+            tasks.modrinth.dependsOn(tasks.modrinthSyncBody)
+        }
+    }
+}
