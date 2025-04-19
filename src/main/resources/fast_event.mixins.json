@@ -1,0 +1,13 @@
+{
+    "package": "",
+    "required": true,
+    "target": "@env(DEFAULT)",
+    "minVersion": "0.8",
+    "compatibilityLevel": "JAVA_8",
+    "mixins": [],
+    "server": [],
+    "client": [],
+    "injectors": {
+        "defaultRequire": 1
+    }
+}

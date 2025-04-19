@@ -1,7 +1,4 @@
 {
   "injected_interfaces": {
-    "net/minecraft/world/item/ItemStack": [
-      "com/example/examplemod/inerface_injection/InjectItemStack"
-    ]
   }
 }
