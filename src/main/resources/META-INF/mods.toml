@@ -36,11 +36,7 @@ authors="${mod_author}" #optional
 
 # A multi-line description for your mod. This has no minimum length, but it *is* required!
 description = '''
-This is a very cool mod that does... things.
-
-...and stuff.
-
-Have I reached 280 characters yet?
+Faster event listener for Forge
 '''
 
 # An (optional) dependency for your mod. Though technically not required,
