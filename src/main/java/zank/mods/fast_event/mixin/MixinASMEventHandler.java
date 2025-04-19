@@ -18,7 +18,7 @@ import java.lang.reflect.Method;
 /**
  * @author ZZZank
  */
-@Mixin(ASMEventHandler.class)
+@Mixin(value = ASMEventHandler.class, remap = false)
 public class MixinASMEventHandler {
 
     @Mutable
