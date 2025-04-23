@@ -14,14 +14,13 @@ import java.lang.reflect.Modifier;
  * @author ZZZank
  */
 public class EventListenerFactory {
-    private static final MethodHandles.Lookup LOOKUP = MethodHandles.lookup();
 
-    public static IEventListener createRawListener(Method method, Object instance) {
+    public static IEventListener createRawListener(MethodHandles.Lookup lookup, Method method, Object instance) {
         // no caching is applied here because in EventBus scenario, caching will only be useful
         // when two instance-based listeners of the same class are registered, which is an
         // incredibly rare usage
         val isStatic = Modifier.isStatic(method.getModifiers());
-        val listenerFactory = createListenerFactory(method, isStatic, instance);
+        val listenerFactory = createListenerFactory(lookup, method, isStatic, instance);
 
         try {
             return isStatic
@@ -33,12 +32,13 @@ public class EventListenerFactory {
     }
 
     private static MethodHandle createListenerFactory(
+        MethodHandles.Lookup lookup,
         Method callback,
         boolean isStatic,
         Object instance
     ) {
         try {
-            val handle = LOOKUP.unreflect(callback);
+            val handle = lookup.unreflect(callback);
 
             val factoryType = isStatic
                 ? Constants.RETURNS_IT
@@ -46,7 +46,7 @@ public class EventListenerFactory {
                 : Constants.RETURNS_IT.insertParameterTypes(0, instance.getClass());
 
             val factoryHandle = LambdaMetafactory.metafactory(
-                LOOKUP,
+                lookup,
                 Constants.METHOD_NAME,
                 factoryType,
                 Constants.METHOD_TYPE,
@@ -62,7 +62,7 @@ public class EventListenerFactory {
         }
     }
 
-    interface Constants {
+    private interface Constants {
         Class<?> CLAZZ = IEventListener.class;
         Method METHOD = CLAZZ.getMethods()[0];
         String METHOD_NAME = METHOD.getName();
