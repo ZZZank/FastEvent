@@ -1,7 +1,7 @@
 # This is an example mods.toml file.
 # Any fields that aren't annotated with #optional are *required*!
 modLoader = "javafml"
-loaderVersion = "${loader_version_range}"
+loaderVersion = "[4,)"
 license = "${license}" # Want to make your mod open source? Check out https://choosealicense.com/!
 
 # This is a URL to e.g. your GitHub or CurseForge issues page.
