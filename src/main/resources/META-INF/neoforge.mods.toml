@@ -43,8 +43,11 @@ Faster event listener for Forge
 # it's always helpful to add these to stop your mod from loading when something is missing
 # rather than erroring out later
 [[dependencies.${mod_id}]]
-modId = "forge"
-mandatory = true # do you **need** this mod to be able to launch?
+modId = "neoforge"
+# The type of the dependency. Can be one of "required", "optional", "incompatible" or "discouraged" (case insensitive).
+# 'required' requires the mod to exist, 'optional' does not
+# 'incompatible' will prevent the game from loading when the mod exists, and 'discouraged' will show a warning
+type="required" #mandatory
 # A version range using interval notation.
 # Brackets mean "inclusive" bounds, while parentheses mean "exclusive".
 versionRange = "${loader_version_range}" # This essentially means any forge >= 36
@@ -54,7 +57,7 @@ side = "BOTH" # Specify where this mod is required: can be BOTH, CLIENT or SERVE
 # And another dependency, use this if you want to require a certain Minecraft version.
 [[dependencies.${mod_id}]]
 modId = "minecraft"
-mandatory = true
+type="required"
 # See above for how to read this notation, this essentially means any
 # version of Minecraft from 1.16.5 (inclusive).
 versionRange = "[${minecraft_version},)"

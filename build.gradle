@@ -84,16 +84,7 @@ loom {
         accessWidenerPath = f
     }
 
-    // since loom 0.10, you are **required** to use the
-    // "forge" block to configure forge-specific features,
-    // such as the mixinConfigs array or datagen
-    forge {
-        // specify the mixin configs used in this mod
-        // this will be added to the jar manifest as well!
-        if (propertyBool('use_mixin')) {
-            it.mixinConfigs.set(propertyStringList('mixin_configs').collect {"${it}.json"})
-        }
-
+    neoForge {
         if (propertyBool('use_access_widener')) {
             convertAccessWideners = true
         }
@@ -106,6 +97,10 @@ configurations {
 }
 
 repositories {
+    maven {
+        name = "Neoforged"
+        url = "https://maven.neoforged.net/releases/"
+    }
     maven {
         name = 'ParchmentMC'
         url = 'https://maven.parchmentmc.org'
@@ -135,7 +130,7 @@ dependencies {
         throw new IllegalArgumentException("mapping type '${mappingType}' not one of: official, parchment, yarn, custom")
     }
 
-    forge("net.minecraftforge:forge:${mc_ver}-${forge_ver}")
+    neoForge("net.neoforged:neoforge:${forge_ver}")
 
     if (propertyBool('use_lombok')) {
         def vers = propertyString("lombok_version")
@@ -157,7 +152,7 @@ processResources {
         exclude(propertyStringList('mixin_configs').collect({"${it}.json"}))
     }
 
-    def filters = ['META-INF/mods.toml', 'pack.mcmeta']
+    def filters = ['META-INF/neoforge.mods.toml', 'pack.mcmeta']
 
     filesMatching(filters) {
         it.expand(
@@ -168,6 +163,7 @@ processResources {
             "mod_id": propertyString('mod_id'),
             "mod_display_name": propertyString('mod_display_name'),
             "mod_author": propertyString('mod_author'),
+            "mod_description": propertyString('mod_description'),
             "minecraft_version": propertyString('minecraft_version'),
             "resource_pack_format": propertyString('resource_pack_format')
         )
