@@ -4,12 +4,12 @@ import net.minecraftforge.eventbus.ASMEventHandler;
 import net.minecraftforge.eventbus.IEventListenerFactory;
 import net.minecraftforge.eventbus.api.IEventListener;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Redirect;
 import zank.mods.fast_event.EventListenerFactory;
 
 import java.lang.invoke.MethodHandles;
-import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 
 /**
