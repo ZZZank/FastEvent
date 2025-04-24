@@ -1,6 +1,6 @@
 package zank.mods.fast_event;
 
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.fml.common.Mod;
 
 /**
  * @author ZZZank

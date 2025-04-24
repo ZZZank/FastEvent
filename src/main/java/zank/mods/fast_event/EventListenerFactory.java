@@ -1,7 +1,7 @@
 package zank.mods.fast_event;
 
 import lombok.val;
-import net.minecraftforge.eventbus.api.IEventListener;
+import net.neoforged.bus.api.Event;
 
 import java.lang.invoke.LambdaMetafactory;
 import java.lang.invoke.MethodHandle;
@@ -9,13 +9,15 @@ import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.util.Arrays;
+import java.util.function.Consumer;
 
 /**
  * @author ZZZank
  */
 public class EventListenerFactory {
 
-    public static IEventListener createRawListener(MethodHandles.Lookup lookup, Method method, Object instance) {
+    public static Consumer<Event> createRawListener(MethodHandles.Lookup lookup, Method method, Object instance) {
         // no caching is applied here because in EventBus scenario, caching will only be useful
         // when two instance-based listeners of the same class are registered, which is an
         // incredibly rare usage
@@ -24,8 +26,8 @@ public class EventListenerFactory {
 
         try {
             return isStatic
-                ? (IEventListener) listenerFactory.invokeExact()
-                : (IEventListener) listenerFactory.invokeExact(instance);
+                ? (Consumer<Event>) listenerFactory.invokeExact()
+                : (Consumer<Event>) listenerFactory.invokeExact(instance);
         } catch (Throwable t) {
             throw new RuntimeException(t);
         }
@@ -63,8 +65,11 @@ public class EventListenerFactory {
     }
 
     private interface Constants {
-        Class<?> CLAZZ = IEventListener.class;
-        Method METHOD = CLAZZ.getMethods()[0];
+        Class<?> CLAZZ = Consumer.class;
+        Method METHOD = Arrays.stream(CLAZZ.getMethods())
+            .filter(m -> "accept".equals(m.getName()))
+            .findFirst()
+            .orElseThrow();
         String METHOD_NAME = METHOD.getName();
         MethodType METHOD_TYPE = MethodType.methodType(METHOD.getReturnType(), METHOD.getParameterTypes());
         MethodType RETURNS_IT = MethodType.methodType(CLAZZ);
