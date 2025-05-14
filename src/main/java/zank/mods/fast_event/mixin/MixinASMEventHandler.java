@@ -34,7 +34,14 @@ public class MixinASMEventHandler {
 
     @Redirect(method = "<init>", at = @At(value = "INVOKE", target = "Lnet/neoforged/bus/EventListenerFactory;create(Ljava/lang/reflect/Method;Ljava/lang/Object;)Lnet/neoforged/bus/api/EventListener;"))
     private EventListener removeClassWrapperGen(Method method, Object target) {
-        val listener = EventListenerFactory.createRawListener(fastEvent$LOOKUP, method, target);
+        Consumer<Event> listener;
+        try {
+            // NeoForge allow using private/protected methods for event listener, so
+            method.setAccessible(true);
+            listener = EventListenerFactory.createRawListener(fastEvent$LOOKUP, method, target);
+        } catch (Throwable e) {
+            throw new RuntimeException("Failed to create IEventListener", e);
+        }
         fastEvent$handler = listener;
         return new ConsumerEventHandler(listener);
     }
