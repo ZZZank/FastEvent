@@ -29,7 +29,7 @@ import java.util.HashMap;
 
 import static org.objectweb.asm.Type.getMethodDescriptor;
 
-public class ASMEventHandler implements IEventListener
+public class LambdaEventHandler implements IEventListener
 {
     private static final MethodHandles.Lookup LOOKUP = MethodHandles.lookup();
 
@@ -39,14 +39,14 @@ public class ASMEventHandler implements IEventListener
     private final SubscribeEvent subInfo;
     private final String readable;
 
-    public ASMEventHandler(Object target, Method method, boolean isGeneric) {
+    public LambdaEventHandler(Object target, Method method, boolean isGeneric) {
         val rawHandler = cache.computeIfAbsent(
             method,
             m -> EventListenerFactory.createRawListener(LOOKUP, m, target)
         );
 
         subInfo = method.getAnnotation(SubscribeEvent.class);
-        readable = "ASM: " + target + " " + method.getName() + getMethodDescriptor(method);
+        readable = "FastEvent: " + target + " " + method.getName() + getMethodDescriptor(method);
 
         Type filter = isGeneric ? extractGenericType(method) : null;
         if (filter != null) {
