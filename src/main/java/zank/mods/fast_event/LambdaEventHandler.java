@@ -29,8 +29,7 @@ import java.util.HashMap;
 
 import static org.objectweb.asm.Type.getMethodDescriptor;
 
-public class LambdaEventHandler implements IEventListener
-{
+public class LambdaEventHandler implements IEventListener {
     private static final MethodHandles.Lookup LOOKUP = MethodHandles.lookup();
 
     private static final HashMap<Method, IEventListener> cache = new HashMap<>();
@@ -81,20 +80,17 @@ public class LambdaEventHandler implements IEventListener
     }
 
     @Override
-    public void invoke(Event event)
-    {
+    public void invoke(Event event) {
         if (!event.isCancelable() || !event.isCanceled() || subInfo.receiveCanceled()) {
             handler.invoke(event);
         }
     }
 
-    public EventPriority getPriority()
-    {
+    public EventPriority getPriority() {
         return subInfo.priority();
     }
 
-    public String toString()
-    {
+    public String toString() {
         return readable;
     }
 }
