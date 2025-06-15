@@ -8,6 +8,7 @@ import net.minecraftforge.eventbus.EventBus;
 import org.jetbrains.annotations.NotNull;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.tree.*;
+import zank.mods.fast_event.FastEventMod;
 
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
@@ -25,6 +26,8 @@ public class FastEventTransformer implements ITransformer<ClassNode> {
     /// @see EventBus#register(Class, Object, Method)
     @Override
     public @NotNull ClassNode transform(@NotNull ClassNode input, @NotNull ITransformerVotingContext context) {
+        FastEventMod.LOGGER.info("event listener transformation triggered, target: {}", context.getClassName());
+
         val methodNode = input.methods
             .stream()
             .filter(m -> "register".equals(m.name))
@@ -38,7 +41,8 @@ public class FastEventTransformer implements ITransformer<ClassNode> {
             .filter(inst -> inst.getOpcode() == Opcodes.NEW
                 && inst.desc.equals("net/minecraftforge/eventbus/ASMEventHandler"))
             .findFirst()
-            .ifPresent(inst -> inst.desc = "zank/mods/fast_event/LambdaEventHandler");
+            .orElseThrow(() -> new IllegalStateException("`new ASMEventHandler` not found"))
+            .desc = "zank/mods/fast_event/LambdaEventHandler";
 
         StreamSupport.stream(methodNode.instructions.spliterator(), false)
             .filter(inst -> inst instanceof MethodInsnNode)
@@ -47,13 +51,15 @@ public class FastEventTransformer implements ITransformer<ClassNode> {
                 && "net/minecraftforge/eventbus/ASMEventHandler".equals(inst.owner)
                 && "<init>".equals(inst.name))
             .findFirst()
-            .ifPresent(inst -> inst.desc = "zank/mods/fast_event/LambdaEventHandler");
+            .orElseThrow(() -> new IllegalStateException("`ASMEventHandler.<init>(...)` not found"))
+            .desc = "zank/mods/fast_event/LambdaEventHandler";
 
         methodNode.localVariables
             .stream()
             .filter(node -> node.desc.equals("Lnet/minecraftforge/eventbus/ASMEventHandler;"))
             .findFirst()
-            .ifPresent(node -> node.desc = "Lzank/mods/fast_event/LambdaEventHandler;");
+            .orElseThrow(() -> new IllegalStateException("`ASMEventHandler asm;` not found"))
+            .desc = "Lzank/mods/fast_event/LambdaEventHandler;";
 
         return input;
     }
