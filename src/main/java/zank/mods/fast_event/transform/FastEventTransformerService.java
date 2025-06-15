@@ -5,6 +5,7 @@ import cpw.mods.modlauncher.api.ITransformationService;
 import cpw.mods.modlauncher.api.ITransformer;
 import cpw.mods.modlauncher.api.IncompatibleEnvironmentException;
 import org.jetbrains.annotations.NotNull;
+import zank.mods.fast_event.FastEventMod;
 
 import java.util.Collections;
 import java.util.List;
@@ -13,10 +14,10 @@ import java.util.Set;
 /**
  * @author ZZZank
  */
-public class TransformerServiceAttempt implements ITransformationService {
+public class FastEventTransformerService implements ITransformationService {
     @Override
     public @NotNull String name() {
-        return "attempt";
+        return FastEventMod.MOD_ID;
     }
 
     @Override
@@ -34,6 +35,6 @@ public class TransformerServiceAttempt implements ITransformationService {
 
     @Override
     public @NotNull List<ITransformer> transformers() {
-        return Collections.singletonList(new TransformerAttempt());
+        return Collections.singletonList(new FastEventTransformer());
     }
 }

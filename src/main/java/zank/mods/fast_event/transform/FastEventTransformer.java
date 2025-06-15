@@ -18,17 +18,13 @@ import java.util.stream.StreamSupport;
 /**
  * @author ZZZank
  */
-public class TransformerAttempt implements ITransformer<ClassNode> {
+public class FastEventTransformer implements ITransformer<ClassNode> {
     /// @see EventBus
     private static final String TARGET_NAME = "net.minecraftforge.eventbus.EventBus";
 
     /// @see EventBus#register(Class, Object, Method)
     @Override
     public @NotNull ClassNode transform(@NotNull ClassNode input, @NotNull ITransformerVotingContext context) {
-        if (!context.getClassName().equals(TARGET_NAME)) {
-            return input;
-        }
-
         val methodNode = input.methods
             .stream()
             .filter(m -> "register".equals(m.name))
