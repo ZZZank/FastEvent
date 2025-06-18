@@ -31,7 +31,17 @@ import java.util.HashMap;
 import static org.objectweb.asm.Type.getMethodDescriptor;
 
 public class ASMEventHandler implements IEventListener {
-    private static final MethodHandles.Lookup LOOKUP = MethodHandles.lookup();
+    private static final MethodHandles.Lookup LOOKUP;
+
+    static {
+        MethodHandles.Lookup l;
+        try {
+            l = new RequestLookupClassLoader().request();
+        } catch (Exception e) {
+            l = MethodHandles.lookup();
+        }
+        LOOKUP = l;
+    }
 
     private static final HashMap<Method, IEventListener> cache = new HashMap<>();
 
