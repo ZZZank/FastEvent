@@ -1,6 +1,7 @@
 package zank.mods.fast_event;
 
 import lombok.val;
+import net.minecraftforge.eventbus.api.Event;
 import net.minecraftforge.eventbus.api.IEventListener;
 
 import java.lang.invoke.LambdaMetafactory;
@@ -9,6 +10,7 @@ import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.util.Arrays;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiFunction;
 import java.util.function.Function;
@@ -77,7 +79,11 @@ public class EventListenerFactory {
 
     private interface Constants {
         Class<?> CLAZZ = IEventListener.class;
-        Method METHOD = CLAZZ.getMethods()[0];
+        /// @see IEventListener#invoke(Event)
+        Method METHOD = Arrays.stream(CLAZZ.getMethods())
+            .filter(m -> "invoke".equals(m.getName()))
+            .findFirst()
+            .orElseThrow(() -> new IllegalStateException("`invoke(...)` not found"));
         String METHOD_NAME = METHOD.getName();
         MethodType METHOD_TYPE = MethodType.methodType(METHOD.getReturnType(), METHOD.getParameterTypes());
         MethodType RETURNS_IT = MethodType.methodType(CLAZZ);
