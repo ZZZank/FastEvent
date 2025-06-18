@@ -1,6 +1,7 @@
 package zank.mods.fast_event;
 
 import lombok.val;
+import net.minecraftforge.eventbus.api.Event;
 import net.minecraftforge.eventbus.api.IEventListener;
 
 import java.lang.invoke.LambdaMetafactory;
@@ -9,18 +10,32 @@ import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.util.Arrays;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.BiFunction;
+import java.util.function.Function;
 
 /**
  * @author ZZZank
  */
 public class EventListenerFactory {
+    private static final boolean DO_CACHE = true;
+    private static final BiFunction<Method, Function<Method, MethodHandle>, MethodHandle> FACTOR_CACHE;
+
+    static {
+        if (DO_CACHE) {
+            FACTOR_CACHE = new ConcurrentHashMap<Method, MethodHandle>()::computeIfAbsent;
+        } else {
+            FACTOR_CACHE = (a, b) -> b.apply(a);
+        }
+    }
 
     public static IEventListener createRawListener(MethodHandles.Lookup lookup, Method method, Object instance) {
         // no caching is applied here because in EventBus scenario, caching will only be useful
         // when two instance-based listeners of the same class are registered, which is an
         // incredibly rare usage
         val isStatic = Modifier.isStatic(method.getModifiers());
-        val listenerFactory = createListenerFactory(lookup, method, isStatic, instance);
+        val listenerFactory = FACTOR_CACHE.apply(method, m -> createListenerFactory(lookup, m, isStatic, instance));
 
         try {
             return isStatic
@@ -64,7 +79,11 @@ public class EventListenerFactory {
 
     private interface Constants {
         Class<?> CLAZZ = IEventListener.class;
-        Method METHOD = CLAZZ.getMethods()[0];
+        /// @see IEventListener#invoke(Event)
+        Method METHOD = Arrays.stream(CLAZZ.getMethods())
+            .filter(m -> "invoke".equals(m.getName()))
+            .findFirst()
+            .orElseThrow(() -> new IllegalStateException("`invoke(...)` not found"));
         String METHOD_NAME = METHOD.getName();
         MethodType METHOD_TYPE = MethodType.methodType(METHOD.getReturnType(), METHOD.getParameterTypes());
         MethodType RETURNS_IT = MethodType.methodType(CLAZZ);
