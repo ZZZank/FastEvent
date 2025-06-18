@@ -26,7 +26,6 @@ import zank.mods.fast_event.EventListenerFactory;
 
 import java.lang.invoke.MethodHandles;
 import java.lang.reflect.*;
-import java.util.HashMap;
 
 import static org.objectweb.asm.Type.getMethodDescriptor;
 
@@ -43,18 +42,13 @@ public class ASMEventHandler implements IEventListener {
         LOOKUP = l;
     }
 
-    private static final HashMap<Method, IEventListener> cache = new HashMap<>();
-
     private final IEventListener handler;
     private final SubscribeEvent subInfo;
     private final String readable;
 
     public ASMEventHandler(Object target, Method method, boolean isGeneric)
         throws IllegalAccessException, InstantiationException, NoSuchMethodException, InvocationTargetException {
-        val rawHandler = cache.computeIfAbsent(
-            method,
-            m -> EventListenerFactory.createRawListener(LOOKUP, m, target)
-        );
+        val rawHandler = EventListenerFactory.createRawListener(LOOKUP, method, target);
 
         subInfo = method.getAnnotation(SubscribeEvent.class);
         readable = "FastEvent: " + target + " " + method.getName() + getMethodDescriptor(method);
