@@ -17,11 +17,12 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-package zank.mods.fast_event;
+package net.minecraftforge.eventbus;
 
 import lombok.val;
 import net.minecraftforge.eventbus.api.*;
 import org.jetbrains.annotations.Nullable;
+import zank.mods.fast_event.EventListenerFactory;
 
 import java.lang.invoke.MethodHandles;
 import java.lang.reflect.*;
@@ -29,7 +30,7 @@ import java.util.HashMap;
 
 import static org.objectweb.asm.Type.getMethodDescriptor;
 
-public class LambdaEventHandler implements IEventListener {
+public class ASMEventHandler implements IEventListener {
     private static final MethodHandles.Lookup LOOKUP = MethodHandles.lookup();
 
     private static final HashMap<Method, IEventListener> cache = new HashMap<>();
@@ -38,7 +39,8 @@ public class LambdaEventHandler implements IEventListener {
     private final SubscribeEvent subInfo;
     private final String readable;
 
-    public LambdaEventHandler(Object target, Method method, boolean isGeneric) {
+    public ASMEventHandler(Object target, Method method, boolean isGeneric)
+        throws IllegalAccessException, InstantiationException, NoSuchMethodException, InvocationTargetException {
         val rawHandler = cache.computeIfAbsent(
             method,
             m -> EventListenerFactory.createRawListener(LOOKUP, m, target)
@@ -70,7 +72,8 @@ public class LambdaEventHandler implements IEventListener {
             } else if (filter instanceof WildcardType) {
                 // If there's a wildcard filter of Object.class, then remove the filter.
                 final WildcardType wildcardType = (WildcardType) filter;
-                if (wildcardType.getUpperBounds().length == 1 && wildcardType.getUpperBounds()[0] == Object.class
+                if (wildcardType.getUpperBounds().length == 1
+                    && wildcardType.getUpperBounds()[0] == Object.class
                     && wildcardType.getLowerBounds().length == 0) {
                     filter = null;
                 }
