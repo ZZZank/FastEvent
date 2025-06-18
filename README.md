@@ -1,29 +1,62 @@
 
-# ModTemplatez
+## FastEvent
 
-An Architectury Loom based template workspace for Minecraft Forge mod development.
+is a Forge optimization mod that optimizes one of the most fundamental systems in Forge: the Event system.
 
-This mod template is initially configured to provide support for 1.16 Forge mod developing, but you can easily change supported version by modifying `gradle.properties`
+## How Fast
 
-## Features
+It's not easy to make a test case for every supported Minecraft version, especially when the Event System for these versions are different from each other. So instead, I will provide a JMH benchmark report from a PR I made for Cleanroom project, in which I used the same optimization approach as FastEvent:
 
-- features from [Architectury Templates](https://github.com/architectury/architectury-templates), the base of this template.
-- variable autofilling for `mods.toml` and `pack.mcmeta`, preventing the hassle of locating every related names and renaming them
-- easy to use mapping selection: official, parchment, or yarn
-- preconfigured [Lombok](https://projectlombok.org/) and [JvmDowngrader](https://github.com/unimined/JvmDowngrader) that can be enabled/disabled easily
-- `shade` for Jar shadowing
-- preconfigured publishing tasks for publishing to Maven/CurseForge/Modrinth
-- mixin config auto generation
-- optional, pre-configured access widener
-- preconfigured dependency management, you can add dependencies in `./gradle/scripts/dependencies.gradle`
-- easy local library setup, by adding Jar files to `gradle/local_libs`
-- changelog generation
+Register 10,000 event listeners, post event 0 times:
+```
+Benchmark                               Mode  Cnt     Score     Error  Units
+BusPerformanceTest.register10000Legacy  avgt    5  1126.498 ± 284.633  ms/op
+BusPerformanceTest.register10000Modern  avgt    5  1058.961 ± 173.586  ms/op
+```
+About 6.4% faster.
 
-## Changing target MC version
+Register 1,000 event listeners, post event 10,000 times:
+```
+Benchmark                                       Mode  Cnt     Score      Error  Units
+BusPerformanceTest.register1000test10000Legacy  avgt    5  4407.963 ± 4250.643  ms/op
+BusPerformanceTest.register1000test10000Modern  avgt    5  3550.578 ± 1991.352  ms/op
+```
+About 24% faster.
 
-If you want to change target version from 1.16 to some other version, you need to change these values in `gradle.properties`:
-- `minecraft_version`
-- choose corresponding `forge_version` and `loader_version_range`
-- `parchment_version` or `yarn_version`, if you're not using "official" mapping
-- possibly `resource_pack_format` to make MC less annoyed about mismatched resource pack format
-- `target_java_version`, use `16` for 1.17, `17` for 1.18+
+Original: https://github.com/CleanroomMC/Cleanroom/pull/328#issuecomment-2801099504
+
+## How does it work
+
+(Nerdy technical details alert)
+
+When devs are using `@EventBusSubscriber` and/or `@SubscribeEvent` to subscribe event handlers, the EventBus cannot get the event handler magically, instead only a `Method` object is available. So the most straight-forward approach is use this object directly: `method.invoke(...)`. This invocation will eventually be redirected by JVM back to the original method, allowing an event handler to receive an event after subscribing to it.
+
+But this (`method.invoke(...)`) is really slow. To make it faster, the EventBus will, at runtime, generate event handler classes for every method it found, eliminating expensive reflection based invocation.
+
+But generating classes introduces another slow-down. To make it even faster, FastEvent replaced class generation with lambda construction, speeding up event handler construction. Another benefit is that lambda is "hidden", allowing JVM to perform more optimization.
+
+If you happen to know a bit Java, code examples below might be more intuitive for you:
+
+```java
+class Listen {
+    public void onEvent(Event event) {
+    }
+}
+Listen lis = new Listen();
+
+// EventBus will generate a new class for every event handler
+class IEventListener$Listen$onEvent implements IEventListener {
+    private Listen instance;
+    public IEventListener$Listen$onEvent(Listen instance) {
+        this.instance = instance;
+    }
+    @Override
+    public void invoke(Event event) {
+        instance.onEvent(event);
+    }
+}
+IEventListener handler = new IEventListener$Listen$onEvent(lis);
+
+// FastEvent uses lambda to generate event handler
+IEventListener handler = lis::onEvent;
+```
